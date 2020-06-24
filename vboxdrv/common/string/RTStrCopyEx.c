@@ -1,4 +1,4 @@
-/* $Id: RTStrCopyEx.cpp $ */
+/* $Id: RTStrCopyEx.cpp 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - RTStrCopyEx.
  */

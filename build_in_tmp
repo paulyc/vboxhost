@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: build_in_tmp $
+# $Id: build_in_tmp 135976 2020-02-04 10:35:17Z bird $
 ## @file
 # Script to build a kernel module in /tmp.
 #

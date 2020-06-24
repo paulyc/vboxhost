@@ -1,4 +1,4 @@
-/* $Id: SUPDrv-linux.c $ */
+/* $Id: SUPDrv-linux.c 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * VBoxDrv - The VirtualBox Support Driver - Linux specifics.
  */
@@ -62,6 +62,7 @@
 #endif
 
 #include <asm/desc.h>
+#include <asm/tlbflush.h>
 
 #include <iprt/asm-amd64-x86.h>
 
@@ -756,7 +757,14 @@ EXPORT_SYMBOL(SUPDrvLinuxIDC);
 
 RTCCUINTREG VBOXCALL supdrvOSChangeCR4(RTCCUINTREG fOrMask, RTCCUINTREG fAndMask)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 20, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+    RTCCUINTREG uOld = cr4_read_shadow();
+    RTCCUINTREG uNew = (uOld & fAndMask) | fOrMask;
+    if (uNew != uOld)
+    {
+        native_write_cr4(uNew);
+    }
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 20, 0)
     RTCCUINTREG uOld = this_cpu_read(cpu_tlbstate.cr4);
     RTCCUINTREG uNew = (uOld & fAndMask) | fOrMask;
     if (uNew != uOld)

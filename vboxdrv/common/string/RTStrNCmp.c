@@ -1,4 +1,4 @@
-/* $Id: RTStrNCmp.cpp $ */
+/* $Id: RTStrNCmp.cpp 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - RTStrNCmp.
  */

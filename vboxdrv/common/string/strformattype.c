@@ -1,4 +1,4 @@
-/* $Id: strformattype.cpp $ */
+/* $Id: strformattype.cpp 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - IPRT String Formatter Extensions, Dynamic Types.
  */

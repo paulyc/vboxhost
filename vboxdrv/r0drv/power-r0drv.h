@@ -1,4 +1,4 @@
-/* $Id: power-r0drv.h $ */
+/* $Id: power-r0drv.h 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - Power Management, Ring-0 Driver, Internal Header.
  */

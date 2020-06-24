@@ -1,4 +1,4 @@
-/* $Id: RTErrConvertFromErrno.cpp $ */
+/* $Id: RTErrConvertFromErrno.cpp 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - Convert errno to iprt status codes.
  */

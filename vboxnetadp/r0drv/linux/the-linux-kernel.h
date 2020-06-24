@@ -1,4 +1,4 @@
-/* $Id: the-linux-kernel.h $ */
+/* $Id: the-linux-kernel.h 137876 2020-05-11 15:34:57Z fbatschu $ */
 /** @file
  * IPRT - Include all necessary headers for the Linux kernel.
  */
@@ -474,6 +474,9 @@ RTDECL(struct page *) rtR0MemObjLinuxVirtToPage(void *pv);
 #ifdef RHEL_RELEASE_CODE
 # if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 1)
 #  define RHEL_81
+# endif
+# if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 2)
+#  define RHEL_82
 # endif
 #endif
 

@@ -1,4 +1,4 @@
-/* $Id: mppresent-generic.cpp $ */
+/* $Id: mppresent-generic.cpp 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - Multiprocessor, Stubs for the RTMp*Present* API.
  */

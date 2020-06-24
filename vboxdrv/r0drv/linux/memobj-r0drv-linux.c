@@ -1,4 +1,4 @@
-/* $Id: memobj-r0drv-linux.c $ */
+/* $Id: memobj-r0drv-linux.c 136776 2020-04-01 10:52:56Z fbatschu $ */
 /** @file
  * IPRT - Ring-0 Memory Objects, Linux.
  */
@@ -182,7 +182,7 @@ static pgprot_t rtR0MemObjLinuxConvertProt(unsigned fProt, bool fKernel)
  * Worker for rtR0MemObjNativeReserveUser and rtR0MemObjNativerMapUser that creates
  * an empty user space mapping.
  *
- * We acquire the mmap_sem of the task!
+ * We acquire the mmap_lock of the task!
  *
  * @returns Pointer to the mapping.
  *          (void *)-1 on failure.
@@ -222,9 +222,9 @@ static void *rtR0MemObjLinuxDoMmap(RTR3PTR R3PtrFixed, size_t cb, size_t uAlignm
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
         ulAddr = vm_mmap(NULL, R3PtrFixed, cb, fLnxProt, MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED, 0);
 #else
-        down_write(&pTask->mm->mmap_sem);
+        down_write(&pTask->mm->mmap_lock);
         ulAddr = do_mmap(NULL, R3PtrFixed, cb, fLnxProt, MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED, 0);
-        up_write(&pTask->mm->mmap_sem);
+        up_write(&pTask->mm->mmap_lock);
 #endif
     }
     else
@@ -232,9 +232,9 @@ static void *rtR0MemObjLinuxDoMmap(RTR3PTR R3PtrFixed, size_t cb, size_t uAlignm
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
         ulAddr = vm_mmap(NULL, 0, cb, fLnxProt, MAP_SHARED | MAP_ANONYMOUS, 0);
 #else
-        down_write(&pTask->mm->mmap_sem);
+        down_write(&pTask->mm->mmap_lock);
         ulAddr = do_mmap(NULL, 0, cb, fLnxProt, MAP_SHARED | MAP_ANONYMOUS, 0);
-        up_write(&pTask->mm->mmap_sem);
+        up_write(&pTask->mm->mmap_lock);
 #endif
         if (    !(ulAddr & ~PAGE_MASK)
             &&  (ulAddr & (uAlignment - 1)))
@@ -257,7 +257,7 @@ static void *rtR0MemObjLinuxDoMmap(RTR3PTR R3PtrFixed, size_t cb, size_t uAlignm
  * Worker that destroys a user space mapping.
  * Undoes what rtR0MemObjLinuxDoMmap did.
  *
- * We acquire the mmap_sem of the task!
+ * We acquire the mmap_lock of the task!
  *
  * @param   pv          The ring-3 mapping.
  * @param   cb          The size of the mapping.
@@ -269,13 +269,13 @@ static void rtR0MemObjLinuxDoMunmap(void *pv, size_t cb, struct task_struct *pTa
     Assert(pTask == current); RT_NOREF_PV(pTask);
     vm_munmap((unsigned long)pv, cb);
 #elif defined(USE_RHEL4_MUNMAP)
-    down_write(&pTask->mm->mmap_sem);
+    down_write(&pTask->mm->mmap_lock);
     do_munmap(pTask->mm, (unsigned long)pv, cb, 0); /* should it be 1 or 0? */
-    up_write(&pTask->mm->mmap_sem);
+    up_write(&pTask->mm->mmap_lock);
 #else
-    down_write(&pTask->mm->mmap_sem);
+    down_write(&pTask->mm->mmap_lock);
     do_munmap(pTask->mm, (unsigned long)pv, cb);
-    up_write(&pTask->mm->mmap_sem);
+    up_write(&pTask->mm->mmap_lock);
 #endif
 }
 
@@ -593,7 +593,7 @@ DECLHIDDEN(int) rtR0MemObjNativeFree(RTR0MEMOBJ pMem)
                 size_t              iPage;
                 Assert(pTask);
                 if (pTask && pTask->mm)
-                    down_read(&pTask->mm->mmap_sem);
+                    down_read(&pTask->mm->mmap_lock);
 
                 iPage = pMemLnx->cPages;
                 while (iPage-- > 0)
@@ -608,7 +608,7 @@ DECLHIDDEN(int) rtR0MemObjNativeFree(RTR0MEMOBJ pMem)
                 }
 
                 if (pTask && pTask->mm)
-                    up_read(&pTask->mm->mmap_sem);
+                    up_read(&pTask->mm->mmap_lock);
             }
             /* else: kernel memory - nothing to do here. */
             break;
@@ -1076,7 +1076,7 @@ DECLHIDDEN(int) rtR0MemObjNativeLockUser(PPRTR0MEMOBJINTERNAL ppMem, RTR3PTR R3P
     papVMAs = (struct vm_area_struct **)RTMemAlloc(sizeof(*papVMAs) * cPages);
     if (papVMAs)
     {
-        down_read(&pTask->mm->mmap_sem);
+        down_read(&pTask->mm->mmap_lock);
 
         /*
          * Get user pages.
@@ -1162,7 +1162,7 @@ DECLHIDDEN(int) rtR0MemObjNativeLockUser(PPRTR0MEMOBJINTERNAL ppMem, RTR3PTR R3P
                 papVMAs[rc]->vm_flags |= VM_DONTCOPY | VM_LOCKED;
             }
 
-            up_read(&pTask->mm->mmap_sem);
+            up_read(&pTask->mm->mmap_lock);
 
             RTMemFree(papVMAs);
 
@@ -1189,7 +1189,7 @@ DECLHIDDEN(int) rtR0MemObjNativeLockUser(PPRTR0MEMOBJINTERNAL ppMem, RTR3PTR R3P
 #endif
         }
 
-        up_read(&pTask->mm->mmap_sem);
+        up_read(&pTask->mm->mmap_lock);
 
         RTMemFree(papVMAs);
         rc = VERR_LOCK_FAILED;
@@ -1461,9 +1461,19 @@ DECLHIDDEN(int) rtR0MemObjNativeMapKernel(PPRTR0MEMOBJINTERNAL ppMem, RTR0MEMOBJ
              * MMIO / physical memory.
              */
             Assert(pMemLnxToMap->Core.enmType == RTR0MEMOBJTYPE_PHYS && !pMemLnxToMap->Core.u.Phys.fAllocated);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)
+            /*
+             * ioremap() defaults to no caching since the 2.6 kernels.
+             * ioremap_nocache() has been removed finally in 5.6-rc1.
+             */
+            pMemLnx->Core.pv = pMemLnxToMap->Core.u.Phys.uCachePolicy == RTMEM_CACHE_POLICY_MMIO
+                             ? ioremap(pMemLnxToMap->Core.u.Phys.PhysBase + offSub, cbSub)
+                             : ioremap_cache(pMemLnxToMap->Core.u.Phys.PhysBase + offSub, cbSub);
+#else
             pMemLnx->Core.pv = pMemLnxToMap->Core.u.Phys.uCachePolicy == RTMEM_CACHE_POLICY_MMIO
                              ? ioremap_nocache(pMemLnxToMap->Core.u.Phys.PhysBase + offSub, cbSub)
                              : ioremap(pMemLnxToMap->Core.u.Phys.PhysBase + offSub, cbSub);
+#endif /* KERNEL_VERSION < 2.6.25 */
             if (pMemLnx->Core.pv)
             {
                 /** @todo fix protection. */
@@ -1594,7 +1604,7 @@ DECLHIDDEN(int) rtR0MemObjNativeMapUser(PPRTR0MEMOBJINTERNAL ppMem, RTR0MEMOBJ p
             const size_t    cPages    = (offSub + cbSub) >> PAGE_SHIFT;
             size_t          iPage;
 
-            down_write(&pTask->mm->mmap_sem);
+            down_write(&pTask->mm->mmap_lock);
 
             rc = VINF_SUCCESS;
             if (pMemLnxToMap->cPages)
@@ -1711,7 +1721,7 @@ DECLHIDDEN(int) rtR0MemObjNativeMapUser(PPRTR0MEMOBJINTERNAL ppMem, RTR0MEMOBJ p
             }
 #endif /* CONFIG_NUMA_BALANCING */
 
-            up_write(&pTask->mm->mmap_sem);
+            up_write(&pTask->mm->mmap_lock);
 
             if (RT_SUCCESS(rc))
             {

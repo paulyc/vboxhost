@@ -1,4 +1,4 @@
-/* $Id: powernotification-r0drv.c $ */
+/* $Id: powernotification-r0drv.c 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - Power Management, Ring-0 Driver, Event Notifications.
  */

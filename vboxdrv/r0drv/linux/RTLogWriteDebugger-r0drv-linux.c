@@ -1,4 +1,4 @@
-/* $Id: RTLogWriteDebugger-r0drv-linux.c $ */
+/* $Id: RTLogWriteDebugger-r0drv-linux.c 135976 2020-02-04 10:35:17Z bird $ */
 /** @file
  * IPRT - Log To Debugger, Ring-0 Driver, Linux.
  */
