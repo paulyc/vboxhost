@@ -62,10 +62,9 @@
 #endif
 
 #include <asm/desc.h>
-#include <asm/tlbflush.h>
 
 #include <iprt/asm-amd64-x86.h>
-
+#include <asm/tlbflush.h>
 
 /*********************************************************************************************************************************
 *   Defined Constants And Macros                                                                                                 *
@@ -759,11 +758,7 @@ RTCCUINTREG VBOXCALL supdrvOSChangeCR4(RTCCUINTREG fOrMask, RTCCUINTREG fAndMask
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
     RTCCUINTREG uOld = cr4_read_shadow();
-    RTCCUINTREG uNew = (uOld & fAndMask) | fOrMask;
-    if (uNew != uOld)
-    {
-        native_write_cr4(uNew);
-    }
+    cr4_update_irqsoff(fOrMask, fAndMask);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 20, 0)
     RTCCUINTREG uOld = this_cpu_read(cpu_tlbstate.cr4);
     RTCCUINTREG uNew = (uOld & fAndMask) | fOrMask;
